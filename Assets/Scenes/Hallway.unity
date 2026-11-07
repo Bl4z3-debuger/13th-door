@@ -1711,6 +1711,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1f23b1c4657376640a060459a5d159b3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NotepadController
+  customFont: {fileID: 12800000, guid: 2dc1a6d7df903c347ac0a8ba911439b6, type: 3}
 --- !u!114 &2134093507
 MonoBehaviour:
   m_ObjectHideFlags: 0
