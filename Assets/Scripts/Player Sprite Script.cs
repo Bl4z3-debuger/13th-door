@@ -29,48 +29,43 @@ public class PlayerSpriteScript : MonoBehaviour
 
     void Update()
     {
-        // MASTER SAFETY CONTROL: If 2D Mode is turned off, skip this script!
         if (!use2DMode)
         {
             if (isCurrentlyWalking)
             {
                 isCurrentlyWalking = false;
+                // --- 🌟 FORCE ANIMATION TO FREEZE WHEN INPUT IS LOCKED 🌟 ---
                 if (animator != null)
                 {
-                    animator.SetBool("isWalking", false);
-                    animator.Play("Walk", 0, 0f); // Resets to Frame 0
-                    animator.speed = 0f;          // Freezes animation playback
+                    animator.speed = 0f;
                 }
             }
             return;
         }
 
-        // 1. Gather raw WASD inputs
         float x = Input.GetAxisRaw("Horizontal");
         float z = Input.GetAxisRaw("Vertical");
         Vector3 direction = new Vector3(x, 0, z).normalized;
 
         if (direction != Vector3.zero)
         {
-            // Trigger animation play cycle once when movement initializes
             if (!isCurrentlyWalking)
             {
                 isCurrentlyWalking = true;
+                // --- 🌟 WAKE ANIMATION SPEED BACK UP 🌟 ---
                 if (animator != null)
                 {
-                    animator.SetBool("isWalking", true);
-                    animator.speed = 1f; // Resumes animation playback at normal speed
+                    animator.speed = 1f;
+                    if (HasParameter("isWalking", animator)) animator.SetBool("isWalking", true);
                 }
             }
 
-            // Flip the 2D graphic flatly left or right
             if (spriteRenderer != null)
             {
                 if (x < 0) spriteRenderer.flipX = true;
                 if (x > 0) spriteRenderer.flipX = false;
             }
 
-            // Smooth diagonal wall sliding calculations
             Vector3 moveStepX = new Vector3(direction.x, 0, 0) * moveSpeed * Time.deltaTime;
             Vector3 moveStepZ = new Vector3(0, 0, direction.z) * moveSpeed * Time.deltaTime;
 
@@ -83,19 +78,14 @@ public class PlayerSpriteScript : MonoBehaviour
         }
         else
         {
-            // Trigger animation pause cycle once when stationary
             if (isCurrentlyWalking)
             {
                 isCurrentlyWalking = false;
+                // --- 🌟 FORCE ANIMATION TO FREEZE WHEN STANDING STILL 🌟 ---
                 if (animator != null)
                 {
-                    animator.SetBool("isWalking", false);
-
-                    // --- RESET TO FRAME 0 LOGIC ---
-                    // "Walk" must match the exact name of your walk animation box inside the Animator window grid!
-                    animator.Play("Walk", 0, 0f); // Overrides current state and rewinds timeline to Frame 0
-                    animator.speed = 0f;          // Freezes the frame timeline right there instantly
-                    // -------------------------------
+                    animator.speed = 0f;
+                    if (HasParameter("isWalking", animator)) animator.SetBool("isWalking", false);
                 }
             }
         }
@@ -124,6 +114,16 @@ public class PlayerSpriteScript : MonoBehaviour
                 continue;
 
             return true;
+        }
+        return false;
+    }
+
+    // Dynamic verification helper to check if a parameter exists before using it
+    private bool HasParameter(string paramName, Animator anim)
+    {
+        foreach (AnimatorControllerParameter param in anim.parameters)
+        {
+            if (param.name == paramName) return true;
         }
         return false;
     }
