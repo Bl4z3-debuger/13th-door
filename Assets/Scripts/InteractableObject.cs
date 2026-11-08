@@ -14,7 +14,7 @@ public class InteractableObject : MonoBehaviour
 
     [Header("Scale Adjustments")]
     [Tooltip("Adjust this to scale the prompt image size up or down smoothly!")]
-    [Range(0.1f, 5.0f)]
+    [Range(0.01f, 5.0f)]
     public float promptScaleMultiplier = 1.0f;
 
     [Header("Visual Custom Asset Assignment")]
@@ -36,9 +36,6 @@ public class InteractableObject : MonoBehaviour
 
         if (customButtonSprite != null)
         {
-            // --- 🌟 UN-WARPED INDEPENDENT CONTAINER ENGINE 🌟 ---
-            // We create the prompt completely independent of the 3D object hierarchies.
-            // This prevents it from inheriting distorted scale data from parent meshes!
             instantiatedPrompt = new GameObject("Generated_E_Prompt_Canvas");
             instantiatedPrompt.transform.position = transform.position + (Vector3.up * hoverHeightOffset);
 
@@ -47,16 +44,23 @@ public class InteractableObject : MonoBehaviour
 
             RectTransform rect = instantiatedPrompt.GetComponent<RectTransform>();
 
-            // Standardizing a clean aspect ratio multiplier scale in absolute coordinates
-            float baseWidth = 1.28f * promptScaleMultiplier;
-            float baseHeight = 0.66f * promptScaleMultiplier;
-            rect.sizeDelta = new Vector2(baseWidth, baseHeight);
+            // --- 🌟 AUTOMATIC NATIVE RESOLUTION ASPECT RATIO OVERRIDE 🌟 ---
+            // Instead of hardcoding dimensions, we read the exact pixel width/height directly from the sprite!
+            // We divide by pixelsPerUnit (usually 100) to translate clean raw pixels smoothly into 3D world space metric boundaries.
+            float ppu = customButtonSprite.pixelsPerUnit;
+            float nativeWidth = (customButtonSprite.rect.width / ppu) * promptScaleMultiplier;
+            float nativeHeight = (customButtonSprite.rect.height / ppu) * promptScaleMultiplier;
 
-            // Lock scale firmly to 1, completely immune to parent object sizes!
+            rect.sizeDelta = new Vector2(nativeWidth, nativeHeight);
+            // -----------------------------------------------------------------
+
             instantiatedPrompt.transform.localScale = Vector3.one;
 
             UnityEngine.UI.Image uiImage = instantiatedPrompt.AddComponent<UnityEngine.UI.Image>();
             uiImage.sprite = customButtonSprite;
+
+            // Force the image layout engine to stay locked to the precise aspect ratio bounds
+            uiImage.preserveAspect = true;
 
             instantiatedPrompt.SetActive(false);
         }
@@ -64,22 +68,25 @@ public class InteractableObject : MonoBehaviour
 
     void Update()
     {
-        // Dynamic position tracking loop (keeps the prompt floating right over moving or stationary targets)
+        // Dynamic position and rotation loop
         if (instantiatedPrompt != null && instantiatedPrompt.activeSelf)
         {
             instantiatedPrompt.transform.position = transform.position + (Vector3.up * hoverHeightOffset);
 
-            // Face camera lens vectors completely flat
             if (Camera.main != null)
             {
                 instantiatedPrompt.transform.rotation = Camera.main.transform.rotation;
             }
 
-            // Real-time scale fine-tuning multiplier override
+            // Keep the dimensions clean and updated relative to real-time scale changes
             RectTransform rect = instantiatedPrompt.GetComponent<RectTransform>();
-            if (rect != null)
+            if (rect != null && customButtonSprite != null)
             {
-                rect.sizeDelta = new Vector2(1.28f * promptScaleMultiplier, 0.66f * promptScaleMultiplier);
+                float ppu = customButtonSprite.pixelsPerUnit;
+                rect.sizeDelta = new Vector2(
+                    (customButtonSprite.rect.width / ppu) * promptScaleMultiplier,
+                    (customButtonSprite.rect.height / ppu) * promptScaleMultiplier
+                );
             }
         }
 
@@ -131,13 +138,9 @@ public class InteractableObject : MonoBehaviour
         }
     }
 
-    // Cleans up un-parented runtime elements if the main object is destroyed
     void OnDestroy()
     {
-        if (instantiatedPrompt != null)
-        {
-            Destroy(instantiatedPrompt);
-        }
+        if (instantiatedPrompt != null) Destroy(instantiatedPrompt);
     }
 
     void OnDrawGizmosSelected()

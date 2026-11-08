@@ -998,7 +998,7 @@ MonoBehaviour:
   objectType: 0
   interactionRadius: 6
   hoverHeightOffset: 2
-  promptScaleMultiplier: 1
+  promptScaleMultiplier: 5
   customButtonSprite: {fileID: -1873834992, guid: f9c17224ff34c8a4cb4ab41d143deac3, type: 3}
 --- !u!1 &581377066
 GameObject:
