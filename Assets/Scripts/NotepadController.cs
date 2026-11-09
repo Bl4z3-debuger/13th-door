@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 using UnityEngine.UIElements;
 
 public class NotepadController : MonoBehaviour
@@ -20,14 +21,22 @@ public class NotepadController : MonoBehaviour
     private Button unlockButton;
     private Button closeUiButton;
 
-    // --- CLUE PANEL MANAGEMENT OBJECTS ---
+    // --- CLUE PANEL HOOKS ---
     private VisualElement clueAPanel;
     private VisualElement clueBPanel;
     private VisualElement clueCPanel;
-
     private Button closeClueABtn;
     private Button closeClueBBtn;
     private Button closeClueCBtn;
+
+    // --- SCREEN FADE MANAGEMENT HOOKS ---
+    private VisualElement fadePanel;
+    private bool isFading = false;
+
+    // --- DIALOGUE SYSTEM HOOKS ---
+    private VisualElement dialoguePanel;
+    private Label dialogueTextLabel;
+    private bool isDialogueActive = false;
 
     void OnEnable()
     {
@@ -53,14 +62,20 @@ public class NotepadController : MonoBehaviour
         closeClueBBtn = root.Q<Button>("CloseClueBBtn");
         closeClueCBtn = root.Q<Button>("CloseClueCBtn");
 
+        // 3. LINK SCREEN FADE & DIALOGUE HOOKS
+        fadePanel = root.Q<VisualElement>("ScreenFadePanel");
+        dialoguePanel = root.Q<VisualElement>("DialoguePanel");
+        dialogueTextLabel = root.Q<Label>("DialogueText");
+
         // Set up the code-generated ghost text box layout for your notepad text field
         if (notepadPanel != null && notepadInput == null)
         {
             notepadInput = new TextField();
             notepadInput.multiline = true;
             notepadInput.pickingMode = PickingMode.Position;
-            notepadInput.style.whiteSpace = WhiteSpace.Normal;
+            notepadPanel.pickingMode = PickingMode.Position;
 
+            notepadInput.style.whiteSpace = WhiteSpace.Normal;
             notepadInput.style.backgroundColor = new StyleColor(Color.clear);
             notepadInput.style.borderTopWidth = 0f;
             notepadInput.style.borderBottomWidth = 0f;
@@ -70,6 +85,7 @@ public class NotepadController : MonoBehaviour
             var innerInputBox = notepadInput.Q(className: "unity-text-field__input");
             if (innerInputBox != null)
             {
+                innerInputBox.pickingMode = PickingMode.Position;
                 innerInputBox.style.backgroundColor = new StyleColor(Color.clear);
                 innerInputBox.style.borderTopWidth = 0f;
                 innerInputBox.style.borderBottomWidth = 0f;
@@ -95,13 +111,19 @@ public class NotepadController : MonoBehaviour
             notepadPanel.Add(notepadInput);
         }
 
+        // 4. ATTACH THE EVENT CLICK LISTENERS
         if (openButton != null) openButton.clicked += ToggleNotepad;
         if (unlockButton != null) unlockButton.clicked += CheckReceptionCode;
         if (closeUiButton != null) closeUiButton.clicked += CloseReceptionUI;
 
-        if (closeClueABtn != null) closeClueABtn.clicked += () => CloseClueUI(clueAPanel);
-        if (closeClueBBtn != null) closeClueBBtn.clicked += () => CloseClueUI(clueBPanel);
-        if (closeClueCBtn != null) closeClueCBtn.clicked += () => CloseClueUI(clueCPanel);
+        if (closeClueABtn != null) closeClueABtn.clicked += CloseClueA;
+        if (closeClueBBtn != null) closeClueBBtn.clicked += CloseClueB;
+        if (closeClueCBtn != null) closeClueCBtn.clicked += CloseClueC;
+
+        if (notepadPanel != null)
+        {
+            notepadPanel.RegisterCallback<PointerDownEvent>(FocusNotepadInput);
+        }
     }
 
     void OnDisable()
@@ -109,6 +131,24 @@ public class NotepadController : MonoBehaviour
         if (openButton != null) openButton.clicked -= ToggleNotepad;
         if (unlockButton != null) unlockButton.clicked -= CheckReceptionCode;
         if (closeUiButton != null) closeUiButton.clicked -= CloseReceptionUI;
+
+        if (closeClueABtn != null) closeClueABtn.clicked -= CloseClueA;
+        if (closeClueBBtn != null) closeClueBBtn.clicked -= CloseClueB;
+        if (closeClueCBtn != null) closeClueCBtn.clicked -= CloseClueC;
+
+        if (notepadPanel != null)
+        {
+            notepadPanel.UnregisterCallback<PointerDownEvent>(FocusNotepadInput);
+        }
+    }
+
+    private void FocusNotepadInput(PointerDownEvent evt)
+    {
+        if (notepadPanel.style.display == DisplayStyle.Flex && notepadInput != null)
+        {
+            notepadInput.Focus();
+            evt.StopPropagation();
+        }
     }
 
     private void ToggleNotepad()
@@ -131,6 +171,47 @@ public class NotepadController : MonoBehaviour
         }
     }
 
+    // --- SCREEN FADE TELEPORT LOOP ---
+    public void StartTeleportSequence(Vector3 destination)
+    {
+        if (!isFading)
+        {
+            StartCoroutine(FadeAndTeleportRoutine(destination));
+        }
+    }
+
+    private IEnumerator FadeAndTeleportRoutine(Vector3 destination)
+    {
+        isFading = true;
+
+        if (playerMovement != null) playerMovement.use2DMode = false;
+
+        if (fadePanel != null)
+        {
+            fadePanel.style.backgroundColor = new StyleColor(Color.black);
+        }
+
+        yield return new WaitForSeconds(0.5f);
+
+        if (playerMovement != null)
+        {
+            playerMovement.transform.position = destination;
+        }
+
+        yield return new WaitForSeconds(0.1f);
+
+        if (fadePanel != null)
+        {
+            fadePanel.style.backgroundColor = new StyleColor(Color.clear);
+        }
+
+        yield return new WaitForSeconds(0.5f);
+
+        if (playerMovement != null) playerMovement.use2DMode = true;
+        isFading = false;
+    }
+
+    // --- DYNAMIC CLUE INTERACT FUNCTIONS ---
     public void DisplayClue(string clueType)
     {
         VisualElement targetPanel = null;
@@ -147,6 +228,10 @@ public class NotepadController : MonoBehaviour
         if (playerMovement != null) playerMovement.use2DMode = false;
     }
 
+    private void CloseClueA() => CloseClueUI(clueAPanel);
+    private void CloseClueB() => CloseClueUI(clueBPanel);
+    private void CloseClueC() => CloseClueUI(clueCPanel);
+
     private void CloseClueUI(VisualElement targetPanel)
     {
         if (targetPanel == null) return;
@@ -158,6 +243,7 @@ public class NotepadController : MonoBehaviour
         if (playerMovement != null) playerMovement.use2DMode = true;
     }
 
+    // --- RECEPTION CODE METHODS ---
     public void OpenReceptionCodeScreen()
     {
         if (receptionPanel == null) return;
@@ -173,7 +259,7 @@ public class NotepadController : MonoBehaviour
         if (codeInputField == null || receptionPanel == null) return;
         if (codeInputField.value == CorrectCode)
         {
-            Debug.Log("RECEPTION DRAWER UNLOCKED! Key to Room 2 and Room 10 added to log references.");
+            Debug.Log("RECEPTION DRAWER UNLOCKED! Rewards injected into logs.");
             CloseReceptionUI();
         }
         else
@@ -191,6 +277,30 @@ public class NotepadController : MonoBehaviour
         UnityEngine.Cursor.lockState = CursorLockMode.None;
         UnityEngine.Cursor.visible = true;
 
+        if (playerMovement != null) playerMovement.use2DMode = true;
+    }
+
+    // --- DIALOGUE ENGINE TRACKING LOOP ---
+    public void SpeakSentences(string npcWords)
+    {
+        if (dialoguePanel == null || dialogueTextLabel == null) return;
+        if (isDialogueActive)
+        {
+            CloseDialogueUI();
+            return;
+        }
+        isDialogueActive = true;
+        dialoguePanel.style.display = DisplayStyle.Flex;
+        dialogueTextLabel.text = npcWords;
+        if (playerMovement != null) playerMovement.use2DMode = false;
+    }
+    public void CloseDialogueUI()
+    {
+        if (dialoguePanel == null) return;
+        dialoguePanel.style.display = DisplayStyle.None;
+        isDialogueActive = false;
+        UnityEngine.Cursor.lockState = CursorLockMode.None;
+        UnityEngine.Cursor.visible = true;
         if (playerMovement != null) playerMovement.use2DMode = true;
     }
 }

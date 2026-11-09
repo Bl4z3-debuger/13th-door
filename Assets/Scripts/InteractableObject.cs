@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public enum InteractionType { ReceptionDesk, ClueA_Note, ClueB_GuestBook, ClueC_Calendar }
+public enum InteractionType { ReceptionDesk, ClueA_Note, ClueB_GuestBook, ClueC_Calendar, NPC_Dialogue, TeleportPad }
 
 public class InteractableObject : MonoBehaviour
 {
@@ -14,18 +14,25 @@ public class InteractableObject : MonoBehaviour
 
     [Header("Scale Adjustments")]
     [Tooltip("Adjust this to scale the prompt image size up or down smoothly!")]
-    [Range(0.01f, 5.0f)]
+    [Range(0.1f, 5.0f)]
     public float promptScaleMultiplier = 1.0f;
 
     [Header("Visual Custom Asset Assignment")]
     [Tooltip("Drag and drop your custom 'makebead-128x66_1' Sprite asset right here!")]
     public Sprite customButtonSprite;
 
+    [Header("Dialogue System Config")]
+    [TextArea(3, 5)]
+    [Tooltip("Type what this NPC should say when Pride interacts with them")]
+    public string npcDialogueLines = "Welcome to the library...";
+
+    [Header("Teleport System Config")]
+    [Tooltip("Type the destination vector coordinates where Pride should spawn")]
+    public Vector3 teleportDestinationCoordinates;
+
     private Transform playerTransform;
     private bool playerIsClose = false;
     private NotepadController uiController;
-
-    // Internal code-generated hover objects
     private GameObject instantiatedPrompt;
 
     void Start()
@@ -43,23 +50,16 @@ public class InteractableObject : MonoBehaviour
             canvas.renderMode = RenderMode.WorldSpace;
 
             RectTransform rect = instantiatedPrompt.GetComponent<RectTransform>();
-
-            // --- 🌟 AUTOMATIC NATIVE RESOLUTION ASPECT RATIO OVERRIDE 🌟 ---
-            // Instead of hardcoding dimensions, we read the exact pixel width/height directly from the sprite!
-            // We divide by pixelsPerUnit (usually 100) to translate clean raw pixels smoothly into 3D world space metric boundaries.
             float ppu = customButtonSprite.pixelsPerUnit;
-            float nativeWidth = (customButtonSprite.rect.width / ppu) * promptScaleMultiplier;
-            float nativeHeight = (customButtonSprite.rect.height / ppu) * promptScaleMultiplier;
-
-            rect.sizeDelta = new Vector2(nativeWidth, nativeHeight);
-            // -----------------------------------------------------------------
+            rect.sizeDelta = new Vector2(
+                (customButtonSprite.rect.width / ppu) * promptScaleMultiplier,
+                (customButtonSprite.rect.height / ppu) * promptScaleMultiplier
+            );
 
             instantiatedPrompt.transform.localScale = Vector3.one;
 
             UnityEngine.UI.Image uiImage = instantiatedPrompt.AddComponent<UnityEngine.UI.Image>();
             uiImage.sprite = customButtonSprite;
-
-            // Force the image layout engine to stay locked to the precise aspect ratio bounds
             uiImage.preserveAspect = true;
 
             instantiatedPrompt.SetActive(false);
@@ -68,7 +68,6 @@ public class InteractableObject : MonoBehaviour
 
     void Update()
     {
-        // Dynamic position and rotation loop
         if (instantiatedPrompt != null && instantiatedPrompt.activeSelf)
         {
             instantiatedPrompt.transform.position = transform.position + (Vector3.up * hoverHeightOffset);
@@ -78,7 +77,6 @@ public class InteractableObject : MonoBehaviour
                 instantiatedPrompt.transform.rotation = Camera.main.transform.rotation;
             }
 
-            // Keep the dimensions clean and updated relative to real-time scale changes
             RectTransform rect = instantiatedPrompt.GetComponent<RectTransform>();
             if (rect != null && customButtonSprite != null)
             {
@@ -134,6 +132,12 @@ public class InteractableObject : MonoBehaviour
                 break;
             case InteractionType.ClueC_Calendar:
                 uiController.DisplayClue("ClueC");
+                break;
+            case InteractionType.NPC_Dialogue:
+                uiController.SpeakSentences(npcDialogueLines);
+                break;
+            case InteractionType.TeleportPad:
+                uiController.StartTeleportSequence(teleportDestinationCoordinates);
                 break;
         }
     }
