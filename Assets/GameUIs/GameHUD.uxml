@@ -22,7 +22,7 @@
         </ui:VisualElement>
         <ui:VisualElement name="ScreenFadePanel" focusable="true" picking-mode="Ignore" style="flex-grow: 1; position: absolute; left: 0; top: 0; bottom: 0; right: 0; background-color: rgba(0, 0, 0, 0); transition-duration: 0.5s; transition-property: background-color;"/>
         <ui:VisualElement name="DialoguePanel" focusable="true" style="flex-grow: 1; position: absolute; left: 10%; right: 10%; bottom: 40px; height: 120px; background-color: rgba(19, 19, 19, 0.878); display: none;">
-            <ui:Label text="Label" name="DialoguesText" selectable="true" focusable="true" style="font-size: 24px; white-space: pre-wrap;"/>
+            <ui:Label text="" name="DialoguesText" selectable="true" focusable="true" style="font-size: 24px; white-space: pre-wrap;"/>
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>
